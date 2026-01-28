@@ -110,8 +110,7 @@ jobs:
           body: |
             ## Release ${{ steps.get_version.outputs.version }}
             
-            **Commit:** ${{ github.sha }}
-            **Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            **Full Changelog:** https://github.com/chattcp/chattcp-capture/commits/${{ steps.get_version.outputs.version }}
             
             ### Downloads
             

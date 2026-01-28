@@ -72,9 +72,9 @@ Get a list of all available network interfaces.
 {
   "data": [
     {
-      "Name": "en0",
-      "IpV4Address": "192.168.1.100",
-      "IpV6Address": "fe80::1"
+      "name": "en0",
+      "ipv4_address": "192.168.1.100",
+      "ipv6_address": "fe80::1"
     }
   ]
 }
@@ -154,7 +154,14 @@ Each captured packet is returned as JSON with the following structure:
     "checksum": 12345,
     "urgent": 0,
     "payload": [],
-    "options": []
+    "options": [
+      {
+        "type": 0,
+        "length": 100,
+        "data": []
+      }
+    ],
+    "padding": []
   },
   "udp": null
 }
@@ -177,6 +184,37 @@ For UDP packets, the `tcp` field will be `null` and `udp` will contain:
   ```bash
   ./chattcp-capture -port 9090
   ```
+
+## Download Latest Release
+
+### Using curl
+
+**Linux (amd64):**
+```bash
+curl -L -o chattcp-capture https://github.com/chattcp/chattcp-capture/releases/latest/download/chattcp-capture-linux-amd64
+chmod +x chattcp-capture
+```
+
+**Windows (amd64):**
+```bash
+curl -L -o chattcp-capture-windows-amd64.exe https://github.com/chattcp/chattcp-capture/releases/latest/download/chattcp-capture-windows-amd64.exe
+```
+
+**macOS (Intel):**
+```bash
+curl -L -o chattcp-capture https://github.com/chattcp/chattcp-capture/releases/latest/download/chattcp-capture-darwin-amd64
+chmod +x chattcp-capture
+# Remove quarantine attribute to allow execution
+xattr -d com.apple.quarantine chattcp-capture 2>/dev/null || xattr -c chattcp-capture
+```
+
+**macOS (Apple Silicon):**
+```bash
+curl -L -o chattcp-capture https://github.com/chattcp/chattcp-capture/releases/latest/download/chattcp-capture-darwin-arm64
+chmod +x chattcp-capture
+# Remove quarantine attribute to allow execution
+xattr -d com.apple.quarantine chattcp-capture 2>/dev/null || xattr -c chattcp-capture
+```
 
 ## Notes
 

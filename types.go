@@ -1,9 +1,9 @@
 package capture
 
 type NetworkInterface struct {
-	Name        string
-	IpV4Address string
-	IpV6Address string
+	Name        string `json:"name"`
+	IpV4Address string `json:"ipv4_address"`
+	IpV6Address string `json:"ipv6_address"`
 }
 
 type FilterParam struct {
@@ -49,7 +49,7 @@ type TCPPacket struct {
 	Urgent                                     uint16      `json:"urgent"`
 	Payload                                    []byte      `json:"payload"`
 	Options                                    []TCPOption `json:"options"`
-	Padding                                    []byte
+	Padding                                    []byte      `json:"padding"`
 }
 
 type UDPPacket struct {

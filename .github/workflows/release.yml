@@ -1,0 +1,130 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            artifact_name: chattcp-capture-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            artifact_name: chattcp-capture-linux-arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            artifact_name: chattcp-capture-windows-amd64.exe
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            artifact_name: chattcp-capture-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            artifact_name: chattcp-capture-darwin-arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcap-dev gcc
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install libpcap || true
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+        run: |
+          go build -ldflags="-s -w" -o ${{ matrix.artifact_name }} ./cmd/server/main.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 7
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Get version from tag or commit
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && git describe --tags --exact-match HEAD 2>/dev/null; then
+            VERSION=$(git describe --tags --exact-match HEAD)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_tag=true" >> $GITHUB_OUTPUT
+          else
+            VERSION="v$(date +'%Y%m%d')-${GITHUB_SHA::8}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## Release ${{ steps.get_version.outputs.version }}
+            
+            **Commit:** ${{ github.sha }}
+            **Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            
+            ### Downloads
+            
+            - `chattcp-capture-linux-amd64` - Linux (amd64)
+            - `chattcp-capture-linux-arm64` - Linux (arm64)
+            - `chattcp-capture-windows-amd64.exe` - Windows (amd64)
+            - `chattcp-capture-darwin-amd64` - macOS (Intel)
+            - `chattcp-capture-darwin-arm64` - macOS (Apple Silicon)
+            
+            ### Installation
+            
+            1. Download the appropriate binary for your platform
+            2. Make it executable (Linux/macOS): `chmod +x chattcp-capture-*`
+            3. Run: `./chattcp-capture -port 8080`
+          files: |
+            artifacts/chattcp-capture-*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -79,6 +79,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
+          merge-multiple: true
 
       - name: Get version from tag or commit
         id: get_version
@@ -119,7 +120,5 @@ jobs:
             3. Run: `./chattcp-capture -port 8080`
           files: |
             artifacts/chattcp-capture-*
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

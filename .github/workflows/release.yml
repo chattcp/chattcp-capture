@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build for ${{ matrix.os }}
@@ -70,6 +73,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout code
@@ -84,15 +89,17 @@ jobs:
       - name: Get version from tag or commit
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && git describe --tags --exact-match HEAD 2>/dev/null; then
-            VERSION=$(git describe --tags --exact-match HEAD)
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "is_tag=true" >> $GITHUB_OUTPUT
-          else
-            VERSION="v$(date +'%Y%m%d')-${GITHUB_SHA::8}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "is_tag=false" >> $GITHUB_OUTPUT
+          VERSION="v$(date +'%Y%m%d')-${GITHUB_SHA::8}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_tag=false" >> $GITHUB_OUTPUT
+
+      - name: Delete existing tag if exists
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.get_version.outputs.version }}"; then
+            git push origin --delete "${{ steps.get_version.outputs.version }}" || true
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
         id: create_release
@@ -120,5 +127,7 @@ jobs:
             3. Run: `./chattcp-capture -port 8080`
           files: |
             artifacts/chattcp-capture-*
+          fail_on_unmatched_files: false
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

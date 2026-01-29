@@ -3,10 +3,22 @@ package api
 import (
 	"context"
 	"encoding/json"
-	capture "github.com/chattcp/chattcp-capture"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"sync"
+
+	capture "github.com/chattcp/chattcp-capture"
+	"github.com/gin-gonic/gin"
+)
+
+type captureSession struct {
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+var (
+	captureMu      sync.Mutex
+	currentSession *captureSession
 )
 
 func ListInterfaces(c *gin.Context) {
@@ -24,6 +36,26 @@ func ListInterfaces(c *gin.Context) {
 }
 
 func StartCaptureSSE(c *gin.Context) {
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	done := make(chan struct{})
+	session := &captureSession{cancel: cancel, done: done}
+	captureMu.Lock()
+	if currentSession != nil {
+		currentSession.cancel()
+		captureMu.Unlock()
+		<-currentSession.done
+		captureMu.Lock()
+	}
+	currentSession = session
+	captureMu.Unlock()
+	defer func() {
+		captureMu.Lock()
+		if currentSession == session {
+			currentSession = nil
+		}
+		close(done)
+		captureMu.Unlock()
+	}()
 	filter, err := parseFilterParams(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -44,7 +76,7 @@ func StartCaptureSSE(c *gin.Context) {
 	c.Header("X-Accel-Buffering", "no")
 	// SSE Listener
 	listener := &SSEListener{
-		ctx:    c.Request.Context(),
+		ctx:    ctx,
 		writer: c.Writer,
 		done:   make(chan struct{}),
 	}
@@ -55,13 +87,13 @@ func StartCaptureSSE(c *gin.Context) {
 		if err = capture.StartCapture(filter, listener); err != nil {
 			select {
 			case captureErr <- err:
-			case <-c.Request.Context().Done():
-				// Ignore error
+			case <-ctx.Done():
+				// 被新请求取消，忽略错误
 			}
 		}
 	}()
 	select {
-	case <-c.Request.Context().Done():
+	case <-ctx.Done():
 		capture.StopCapture()
 		<-listener.done
 	case err = <-captureErr:

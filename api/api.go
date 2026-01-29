@@ -118,9 +118,17 @@ func (l *SSEListener) sendError(errMsg string) {
 }
 
 func parseFilterParams(c *gin.Context) (capture.FilterParam, error) {
+	tcp := c.Query("tcp") == "true"
+	udp := c.Query("udp") == "true"
+	proto := ""
+	if tcp {
+		proto = "tcp"
+	} else if udp {
+		proto = "udp"
+	}
 	filter := capture.FilterParam{
 		InterfaceName: c.Query("i"),
-		Proto:         c.Query("p"),
+		Proto:         proto,
 	}
 	if hostSrc := c.Query("h.src"); hostSrc != "" {
 		filter.Host = &struct {

@@ -93,17 +93,13 @@ Start capturing packets and receive them via Server-Sent Events.
 
 **Query Parameters:**
 - `i` (required): Network interface name (e.g., "en0", "eth0")
-- `p` (optional): Protocol filter - "tcp" or "udp", or port number for any port filter
+- `tcp`|`udp` (optional): Protocol filter - "tcp" or "udp"
 - `h` (optional): Filter by any IP address (source or destination)
 - `h.src` (optional): Filter by source IP address
-- `h.dst` (optional): Filter by destination IP address
+- `h.dst` (optional): Filter by destination IP address'
+- `p` (optional):  Filter by any port (source or destination)
 - `p.src` (optional): Filter by source port
 - `p.dst` (optional): Filter by destination port
-
-**Note:** The `p` parameter can be either:
-- A protocol string ("tcp" or "udp") to filter by protocol
-- A port number to filter by any port (source or destination)
-- If both protocol and port filtering are needed, use `p` for protocol and `p.src`/`p.dst` for port
 
 **Response:** Server-Sent Events stream
 
@@ -115,13 +111,13 @@ Start capturing packets and receive them via Server-Sent Events.
 **Example:**
 ```bash
 # Capture TCP packets on port 8080
-curl "http://localhost:8080/api/capture?i=en0&p=tcp&p.src=8080"
+curl "http://localhost:8080/api/capture?i=en0&tcp=true&p.src=8080"
 
 # Capture packets from specific source IP
 curl "http://localhost:8080/api/capture?i=en0&h.src=192.168.1.100"
 
 # Capture UDP packets on destination port 53
-curl "http://localhost:8080/api/capture?i=en0&p=udp&p.dst=53"
+curl "http://localhost:8080/api/capture?i=en0&udp=true&p.dst=53"
 ```
 
 ## Packet Data Structure
